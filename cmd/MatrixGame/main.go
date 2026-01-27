@@ -122,7 +122,7 @@ func play() {
 		roundNumber++
 
 		moves := executeRound()
-		applyMovesAndCheckGameOver(moves)
+		applyMoves(moves)
 
 		fmt.Print("Enter para continuar")
 		fmt.Scanln()
@@ -195,7 +195,7 @@ func executeRound() []MoveResult {
 	return moves
 }
 
-func applyMovesAndCheckGameOver(moves []MoveResult) {
+func applyMoves(moves []MoveResult) {
 	mu.Lock()
 	defer mu.Unlock()
 
