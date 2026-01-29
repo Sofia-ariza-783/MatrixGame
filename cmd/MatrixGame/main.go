@@ -3,9 +3,8 @@ package main
 import (
 	"Matrix/internal/models"
 	"fmt"
-	"strconv"
+	"strings"
 	"sync"
-	"time"
 )
 
 var (
@@ -15,13 +14,12 @@ var (
 	Neo                                      *models.Neo
 	isOnGame                                 bool
 	roundBarrier                             *sync.WaitGroup
-	mu                                       sync.Mutex
 )
 
 type MoveResult struct {
 	OldX, OldY int
 	NewX, NewY int
-	Element    models.Element
+	Movable    models.Movable
 }
 
 func main() {
@@ -30,12 +28,13 @@ func main() {
 	getPhones()
 	getAgents()
 
+	drawGameBoard()
 	isOnGame = true
 	play()
 }
 
 func getMatrixSize() {
-	fmt.Print("Ingresa el tamaño de la matriz (nxm): ")
+	fmt.Print("► Ingresa el tamaño de la matriz (nxm): ")
 	fmt.Scan(&n, &m)
 
 	Matrix = make([][]models.Element, n)
@@ -45,7 +44,7 @@ func getMatrixSize() {
 }
 
 func getNeo() {
-	fmt.Print("Ingresa la posicion de Neo: ")
+	fmt.Print("► Ingresa la posicion de Neo: ")
 	fmt.Scan(&neoPosX, &neoPosY)
 
 	if !verifyPosition(neoPosX-1, neoPosY-1) {
@@ -58,12 +57,12 @@ func getNeo() {
 }
 
 func getPhones() {
-	fmt.Print("Ingresa cuantos telefonos hay: ")
+	fmt.Print("► Ingresa cuantos telefonos hay: ")
 	fmt.Scan(&nPhones)
 
 	for i := 0; i < nPhones; i++ {
 		var phonePosX, phonePosY int
-		fmt.Printf("Ingresa la posición del teléfono %d: ", i)
+		fmt.Printf("► Ingresa la posición del teléfono %d: ", i+1)
 		fmt.Scan(&phonePosX, &phonePosY)
 
 		if !verifyPosition(phonePosX-1, phonePosY-1) {
@@ -78,19 +77,19 @@ func getPhones() {
 			continue
 		}
 
-		Phone := models.NewPhone(phonePosX-1, phonePosY-1, strconv.Itoa(i))
+		Phone := models.NewPhone(phonePosX-1, phonePosY-1, " ☎ ")
 		Matrix[phonePosX-1][phonePosY-1] = Phone
 	}
 }
 
 func getAgents() {
-	fmt.Print("Ingresa cuantos agentes hay: ")
+	fmt.Print("► Ingresa cuantos agentes hay: ")
 	fmt.Scan(&nAgents)
 	Agents = make([]models.Movable, 0, nAgents)
 
 	for i := 0; i < nAgents; i++ {
 		var agentPosX, agentPosY int
-		fmt.Printf("Ingresa la posición del agente %d: ", i)
+		fmt.Printf("► Ingresa la posición del agente %d: ", i+1)
 		fmt.Scan(&agentPosX, &agentPosY)
 
 		if !verifyPosition(agentPosX-1, agentPosY-1) {
@@ -105,7 +104,7 @@ func getAgents() {
 			continue
 		}
 
-		agent := models.NewAgent(agentPosX-1, agentPosY-1, strconv.Itoa(i+1))
+		agent := models.NewAgent(agentPosX-1, agentPosY-1, " A ")
 		Matrix[agentPosX-1][agentPosY-1] = agent
 		Agents = append(Agents, agent)
 	}
@@ -117,18 +116,21 @@ func verifyPosition(x, y int) bool {
 
 func play() {
 	roundNumber := 1
+	fmt.Println("\n\n╭┈┈┈┈┈┈┈┈┈┈┈┈┈┈ JUEGO INICIADO ┈┈┈┈┈┈┈┈┈┈┈┈┈┈╮")
 	for isOnGame {
-		fmt.Printf("\n+-+-+-+-+-+-+-+ Ronda %d +-+-+-+-+-+-+-+\n", roundNumber)
+		fmt.Printf("\n╰┈➤ ❝ [Ronda %d] ❞\n\n", roundNumber)
 		roundNumber++
 
 		moves := executeRound()
 		applyMoves(moves)
 
+		drawGameBoard()
 		fmt.Print("Enter para continuar")
 		fmt.Scanln()
 	}
-	fmt.Println("+-+-+-+-+-+-+-+ [ Juego terminado ]  +-+-+-+-+-+-+-+")
+	fmt.Printf("\n\n╰┈┈┈┈┈┈┈┈┈┈┈┈┈┈ JUEGO TERMINADO ┈┈┈┈┈┈┈┈┈┈┈┈┈┈╯")
 }
+
 func executeRound() []MoveResult {
 	roundBarrier = &sync.WaitGroup{}
 	totalMovers := len(Agents) + 1
@@ -140,23 +142,14 @@ func executeRound() []MoveResult {
 	for i := 0; i < len(Agents); i++ {
 		go func(agent models.Movable, idx int) {
 			defer roundBarrier.Done()
-
-			mu.Lock()
-			oldX, oldY := agent.GetX(), agent.GetY()
-			mu.Unlock()
-
-			time.Sleep(time.Millisecond * 10)
-
-			mu.Lock()
 			newX, newY := agent.CalculateMove(Matrix)
-			mu.Unlock()
 
 			moveResults <- MoveResult{
-				OldX:    oldX,
-				OldY:    oldY,
+				OldX:    agent.GetX(),
+				OldY:    agent.GetY(),
 				NewX:    newX,
 				NewY:    newY,
-				Element: agent,
+				Movable: agent,
 			}
 
 		}(Agents[i], i)
@@ -164,23 +157,14 @@ func executeRound() []MoveResult {
 
 	go func() {
 		defer roundBarrier.Done()
-
-		mu.Lock()
-		oldX, oldY := Neo.GetX(), Neo.GetY()
-		mu.Unlock()
-
-		time.Sleep(time.Millisecond * 10)
-
-		mu.Lock()
 		newX, newY := Neo.CalculateMove(Matrix)
-		mu.Unlock()
 
 		moveResults <- MoveResult{
-			OldX:    oldX,
-			OldY:    oldY,
+			OldX:    Neo.GetX(),
+			OldY:    Neo.GetY(),
 			NewX:    newX,
 			NewY:    newY,
-			Element: Neo,
+			Movable: Neo,
 		}
 	}()
 
@@ -196,24 +180,36 @@ func executeRound() []MoveResult {
 }
 
 func applyMoves(moves []MoveResult) {
-	mu.Lock()
-	defer mu.Unlock()
 
 	var neoNewX, neoNewY int
 	agentPositions := make(map[string][2]int)
 
 	for _, move := range moves {
-		if _, isNeo := move.Element.(*models.Neo); isNeo {
+		if _, isNeo := move.Movable.(*models.Neo); isNeo {
 			neoNewX, neoNewY = move.NewX, move.NewY
-		} else if _, isAgent := move.Element.(*models.Agent); isAgent {
-			agentPositions[move.Element.GetName()] = [2]int{move.NewX, move.NewY}
+			move.Movable.SetX(neoNewX)
+			move.Movable.SetY(neoNewY)
+		} else if _, isAgent := move.Movable.(*models.Agent); isAgent {
+			agentPositions[move.Movable.GetName()] = [2]int{move.NewX, move.NewY}
+			move.Movable.SetX(move.NewX)
+			move.Movable.SetY(move.NewY)
 		}
 	}
 
-	neoCapturado := false
+	if neoNewX >= 0 && neoNewX < n && neoNewY >= 0 && neoNewY < m {
+		if element := Matrix[neoNewX][neoNewY]; element != nil {
+			if _, isPhone := element.(*models.Phone); isPhone {
+				fmt.Printf("\n------- Neo Escapo de la Matrix -------")
+				isOnGame = false
+				return
+			}
+		}
+	}
+
+	capturedNeo := false
 	for _, pos := range agentPositions {
 		if pos[0] == neoNewX && pos[1] == neoNewY {
-			neoCapturado = true
+			capturedNeo = true
 			break
 		}
 	}
@@ -226,17 +222,27 @@ func applyMoves(moves []MoveResult) {
 
 	for _, move := range moves {
 		if move.NewX >= 0 && move.NewX < n && move.NewY >= 0 && move.NewY < m {
-			Matrix[move.NewX][move.NewY] = move.Element
+			Matrix[move.NewX][move.NewY] = move.Movable
 		}
 	}
 
-	if neoCapturado || Neo.IsTrapped(Matrix) {
+	if capturedNeo || Neo.IsTrapped(Matrix) {
 		fmt.Println("------- Neo fue atrapado -------")
 		isOnGame = false
 	}
+}
 
-	if !Neo.IsInMatrix() {
-		fmt.Println("------- Neo Escapo de la Matrix -------")
-		isOnGame = false
+func drawGameBoard() {
+	fmt.Printf("\n╭" + strings.Repeat(("────"), len(Matrix)) + "╮\n")
+	for _, row := range Matrix {
+		for _, cell := range row {
+			if cell == nil {
+				fmt.Print(" ▢ ")
+			} else {
+				fmt.Print(cell.GetName())
+			}
+		}
+		fmt.Println("")
 	}
+	fmt.Printf("╰" + strings.Repeat(("────"), len(Matrix)) + "╯\n")
 }

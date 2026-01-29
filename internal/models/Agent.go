@@ -79,6 +79,9 @@ func (a *Agent) isSafe(x, y int, matrix [][]Element) bool {
 		if _, isAgent := element.(*Agent); isAgent {
 			return false
 		}
+		if _, isPhone := element.(*Phone); isPhone {
+			return false
+		}
 	}
 	return true
 }
@@ -107,9 +110,6 @@ func (a *Agent) CalculateMove(matrix [][]Element) (int, int) {
 			newY = a.posY - 1
 		}
 	}
-
-	a.SetX(newX)
-	a.SetY(newY)
 
 	fmt.Printf("El agente %s decidio moverse a las coordenadas: %d %d\n", a.name, newX+1, newY+1)
 	return newX, newY

@@ -3,18 +3,16 @@ package models
 import "fmt"
 
 type Neo struct {
-	name       string
-	posX       int
-	posY       int
-	isInMatrix bool
+	name string
+	posX int
+	posY int
 }
 
 func NewNeo(initialPosX int, initialPosY int) *Neo {
 	return &Neo{
-		name:       "Neo",
-		posX:       initialPosX,
-		posY:       initialPosY,
-		isInMatrix: true,
+		name: " N ",
+		posX: initialPosX,
+		posY: initialPosY,
 	}
 }
 
@@ -44,10 +42,6 @@ func (n *Neo) IsTrapped(matrix [][]Element) bool {
 		return true
 	}
 	return false
-}
-
-func (n *Neo) IsInMatrix() bool {
-	return n.isInMatrix
 }
 
 func (n *Neo) isSafe(x, y int, matrix [][]Element) bool {
@@ -109,10 +103,6 @@ func (n *Neo) CalculateMove(matrix [][]Element) (int, int) {
 
 	newX, newY := n.posX, n.posY
 
-	if dx == 0 && dy == 0 {
-		n.isInMatrix = false
-	}
-
 	if dx != 0 {
 		if dx > 0 && n.isSafe(n.posX+1, n.posY, matrix) {
 			newX = n.posX + 1
@@ -126,9 +116,6 @@ func (n *Neo) CalculateMove(matrix [][]Element) (int, int) {
 			newY = n.posY - 1
 		}
 	}
-
-	n.SetX(newX)
-	n.SetY(newY)
 
 	fmt.Printf("Neo decidio moverse n las coordenadas: %d %d\n", newX+1, newY+1)
 	return newX, newY
